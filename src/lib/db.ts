@@ -5,7 +5,7 @@ import fs from 'fs';
 // Ensure data directory exists
 const dataDir = path.join(process.cwd(), 'data');
 if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  fs.mkdirSync(dataDir, { recursive: true });
 }
 
 const db = new Database(path.join(dataDir, 'casino36.db'));
@@ -16,7 +16,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    balance INTEGER DEFAULT 1000000,
+    balance INTEGER DEFAULT 10000000,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -56,38 +56,38 @@ export default db;
 
 // User operations
 export const createUser = (id: string, username: string, passwordHash: string) => {
-    const stmt = db.prepare('INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)');
-    return stmt.run(id, username, passwordHash);
+  const stmt = db.prepare('INSERT INTO users (id, username, password_hash, balance) VALUES (?, ?, ?, ?)');
+  return stmt.run(id, username, passwordHash, 10000000);
 };
 
 export const getUserByUsername = (username: string) => {
-    const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
-    return stmt.get(username) as { id: string; username: string; password_hash: string; balance: number; created_at: string } | undefined;
+  const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
+  return stmt.get(username) as { id: string; username: string; password_hash: string; balance: number; created_at: string } | undefined;
 };
 
 export const getUserById = (id: string) => {
-    const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
-    return stmt.get(id) as { id: string; username: string; password_hash: string; balance: number; created_at: string } | undefined;
+  const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+  return stmt.get(id) as { id: string; username: string; password_hash: string; balance: number; created_at: string } | undefined;
 };
 
 export const updateBalance = (userId: string, newBalance: number) => {
-    const stmt = db.prepare('UPDATE users SET balance = ? WHERE id = ?');
-    return stmt.run(newBalance, userId);
+  const stmt = db.prepare('UPDATE users SET balance = ? WHERE id = ?');
+  return stmt.run(newBalance, userId);
 };
 
 // Bet operations
 export const createBet = (id: string, userId: string, game: string, amount: number, betType: string, result: string, profit: number) => {
-    const stmt = db.prepare('INSERT INTO bets (id, user_id, game, amount, bet_type, result, profit) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    return stmt.run(id, userId, game, amount, betType, result, profit);
+  const stmt = db.prepare('INSERT INTO bets (id, user_id, game, amount, bet_type, result, profit) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  return stmt.run(id, userId, game, amount, betType, result, profit);
 };
 
 export const getBetsByUser = (userId: string, limit = 50) => {
-    const stmt = db.prepare('SELECT * FROM bets WHERE user_id = ? ORDER BY created_at DESC LIMIT ?');
-    return stmt.all(userId, limit);
+  const stmt = db.prepare('SELECT * FROM bets WHERE user_id = ? ORDER BY created_at DESC LIMIT ?');
+  return stmt.all(userId, limit);
 };
 
 export const getTodayStats = (userId: string) => {
-    const stmt = db.prepare(`
+  const stmt = db.prepare(`
     SELECT 
       COUNT(*) as total_bets,
       COALESCE(SUM(amount), 0) as total_wagered,
@@ -96,27 +96,33 @@ export const getTodayStats = (userId: string) => {
     FROM bets 
     WHERE user_id = ? AND date(created_at) = date('now')
   `);
-    return stmt.get(userId) as { total_bets: number; total_wagered: number; total_won: number; total_lost: number };
+  return stmt.get(userId) as { total_bets: number; total_wagered: number; total_won: number; total_lost: number };
 };
 
 // Promo operations
 export const hasRedeemedCode = (userId: string, code: string) => {
-    const stmt = db.prepare('SELECT * FROM promo_redemptions WHERE user_id = ? AND code = ?');
-    return stmt.get(userId, code) !== undefined;
+  const stmt = db.prepare('SELECT * FROM promo_redemptions WHERE user_id = ? AND code = ?');
+  return stmt.get(userId, code) !== undefined;
+};
+
+export const getUsedCodes = (userId: string) => {
+  const stmt = db.prepare('SELECT code FROM promo_redemptions WHERE user_id = ?');
+  const rows = stmt.all(userId) as { code: string }[];
+  return rows.map(r => r.code);
 };
 
 export const redeemCode = (id: string, userId: string, code: string, amount: number) => {
-    const stmt = db.prepare('INSERT INTO promo_redemptions (id, user_id, code, amount) VALUES (?, ?, ?, ?)');
-    return stmt.run(id, userId, code, amount);
+  const stmt = db.prepare('INSERT INTO promo_redemptions (id, user_id, code, amount) VALUES (?, ?, ?, ?)');
+  return stmt.run(id, userId, code, amount);
 };
 
 // Game rounds
 export const createGameRound = (id: string, game: string, roundNumber: number, result: string, hash: string) => {
-    const stmt = db.prepare('INSERT INTO game_rounds (id, game, round_number, result, hash) VALUES (?, ?, ?, ?, ?)');
-    return stmt.run(id, game, roundNumber, result, hash);
+  const stmt = db.prepare('INSERT INTO game_rounds (id, game, round_number, result, hash) VALUES (?, ?, ?, ?, ?)');
+  return stmt.run(id, game, roundNumber, result, hash);
 };
 
 export const getRecentRounds = (game: string, limit = 20) => {
-    const stmt = db.prepare('SELECT * FROM game_rounds WHERE game = ? ORDER BY created_at DESC LIMIT ?');
-    return stmt.all(game, limit);
+  const stmt = db.prepare('SELECT * FROM game_rounds WHERE game = ? ORDER BY created_at DESC LIMIT ?');
+  return stmt.all(game, limit);
 };

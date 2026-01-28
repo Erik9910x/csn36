@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserByUsername } from '@/lib/db';
+import { getUserByUsername, getUsedCodes } from '@/lib/db';
 import { comparePassword, generateToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
                 username: user.username,
                 balance: user.balance,
                 created_at: user.created_at,
+                usedCodes: getUsedCodes(user.id),
             },
         });
     } catch (error) {

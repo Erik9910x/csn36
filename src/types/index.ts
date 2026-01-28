@@ -3,6 +3,7 @@ export interface User {
     username: string;
     balance: number;
     created_at: string;
+    usedCodes?: string[];
 }
 
 export interface Bet {

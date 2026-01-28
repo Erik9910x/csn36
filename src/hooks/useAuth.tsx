@@ -9,6 +9,7 @@ interface AuthContextType {
     login: (token: string, user: User) => void;
     logout: () => void;
     updateBalance: (newBalance: number) => void;
+    refreshUser: () => Promise<void>;
     isLoading: boolean;
 }
 
@@ -58,8 +59,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const refreshUser = async () => {
+        if (!token) return;
+        try {
+            const res = await fetch('/api/user', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.user) {
+                    setUser(data.user);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                }
+            }
+        } catch (error) {
+            console.error('Failed to refresh user', error);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, updateBalance, isLoading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, updateBalance, refreshUser, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

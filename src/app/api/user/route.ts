@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserById } from '@/lib/db';
+import { getUserById, getUsedCodes } from '@/lib/db';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
                 username: user.username,
                 balance: user.balance,
                 created_at: user.created_at,
+                usedCodes: getUsedCodes(user.id),
             },
         });
     } catch (error) {

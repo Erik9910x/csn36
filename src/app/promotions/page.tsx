@@ -41,7 +41,7 @@ const promos = [
 ];
 
 export default function PromotionsPage() {
-    const { user, token, updateBalance } = useAuth();
+    const { user, token, refreshUser } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
 
@@ -52,9 +52,9 @@ export default function PromotionsPage() {
     useEffect(() => {
         if (!user) {
             router.push('/login');
+        } else if (user.usedCodes) {
+            setUsedCodes(user.usedCodes);
         }
-        const stored = localStorage.getItem('usedPromoCodes');
-        if (stored) setUsedCodes(JSON.parse(stored));
     }, [user, router]);
 
     const redeemCode = async (code: string) => {
@@ -80,10 +80,7 @@ export default function PromotionsPage() {
 
             const data = await res.json();
             if (res.ok) {
-                updateBalance(data.newBalance);
-                const newUsedCodes = [...usedCodes, upperCode];
-                setUsedCodes(newUsedCodes);
-                localStorage.setItem('usedPromoCodes', JSON.stringify(newUsedCodes));
+                await refreshUser();
                 showToast('success', `Nhận thành công +${formatCurrency(data.amount)}!`);
                 setPromoCode('');
             } else {
