@@ -1,36 +1,41 @@
+
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { User } from '@/types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'casino36-super-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'v3-secret-key-replace-me';
 
-export interface JWTPayload {
+interface JwtPayload {
     userId: string;
     username: string;
 }
 
 export const hashPassword = async (password: string): Promise<string> => {
-    return bcrypt.hash(password, 10);
+    return await bcrypt.hash(password, 12);
 };
 
 export const comparePassword = async (password: string, hash: string): Promise<boolean> => {
-    return bcrypt.compare(password, hash);
+    return await bcrypt.compare(password, hash);
 };
 
-export const generateToken = (payload: JWTPayload): string => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+export const generateToken = (user: { id: string, username: string }): string => {
+    return jwt.sign(
+        { userId: user.id, username: user.username },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+    );
 };
 
-export const verifyToken = (token: string): JWTPayload | null => {
+export const verifyToken = (token: string): JwtPayload | null => {
     try {
-        return jwt.verify(token, JWT_SECRET) as JWTPayload;
-    } catch {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        return decoded as JwtPayload;
+    } catch (e) {
         return null;
     }
 };
 
-export const getTokenFromHeader = (authHeader: string | null): string | null => {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-    return authHeader.substring(7);
+export const getTokenFromHeader = (header: string | null): string | null => {
+    if (!header?.startsWith('Bearer ')) return null;
+    return header.substring(7);
 };

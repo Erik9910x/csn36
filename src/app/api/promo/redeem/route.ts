@@ -1,70 +1,45 @@
+
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserById, processRedemption } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
+import { processRedemption } from '@/lib/db';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth';
-import { PROMO_CODES, generateId } from '@/lib/utils';
+import { PROMO_CODES } from '@/lib/utils';
+import { ERROR_CODES } from '@/types';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
     try {
-        const authHeader = request.headers.get('authorization');
-        const token = getTokenFromHeader(authHeader);
+        const token = getTokenFromHeader(req.headers.get('Authorization'));
+        const payload = token ? verifyToken(token) : null;
 
-        if (!token) {
-            return NextResponse.json(
-                { error: 'Vui lòng đăng nhập' },
-                { status: 401 }
-            );
-        }
-
-        const payload = verifyToken(token);
         if (!payload) {
-            return NextResponse.json(
-                { error: 'Token không hợp lệ' },
-                { status: 401 }
-            );
+            return NextResponse.json({ error: ERROR_CODES.INVALID_TOKEN }, { status: 401 });
         }
 
-        const { code } = await request.json();
-
-        if (!code) {
-            return NextResponse.json(
-                { error: 'Vui lòng nhập mã khuyến mãi' },
-                { status: 400 }
-            );
-        }
-
-        const upperCode = code.toUpperCase().trim();
-        const amount = PROMO_CODES[upperCode];
+        const body = await req.json();
+        const code = body.code?.toUpperCase()?.trim();
+        const amount = PROMO_CODES[code];
 
         if (!amount) {
-            return NextResponse.json(
-                { error: 'Mã khuyến mãi không tồn tại' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: ERROR_CODES.INVALID_CODE }, { status: 400 });
         }
 
         try {
-            const newBalance = processRedemption(generateId(), payload.userId, upperCode, amount);
-
+            const newBalance = processRedemption(uuidv4(), payload.userId, code, amount);
             return NextResponse.json({
-                message: 'Nhận thưởng thành công!',
+                success: true,
+                message: 'Redeemed successfully',
                 amount,
-                newBalance,
+                newBalance
             });
         } catch (err: any) {
-            console.error('Redeem transaction error:', err);
-            if (err.message === 'ALREADY_USED') {
-                return NextResponse.json({ error: 'Bạn đã sử dụng mã này rồi' }, { status: 400 });
-            }
-            if (err.message === 'USER_NOT_FOUND') {
-                return NextResponse.json({ error: 'Người dùng không tồn tại' }, { status: 404 });
+            if (err.message === ERROR_CODES.ALREADY_USED) {
+                return NextResponse.json({ error: 'Code already used' }, { status: 400 });
             }
             throw err;
         }
-    } catch (error) {
-        console.error('Promo redeem error:', error);
-        return NextResponse.json(
-            { error: 'Lỗi hệ thống' },
-            { status: 500 }
-        );
+
+    } catch (e) {
+        console.error('Redeem API Error:', e);
+        return NextResponse.json({ error: 'System Error' }, { status: 500 });
     }
 }

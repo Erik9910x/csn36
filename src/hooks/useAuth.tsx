@@ -1,14 +1,14 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@/types';
+import { User, AuthResponse } from '@/types';
 
 interface AuthContextType {
     user: User | null;
     token: string | null;
     login: (token: string, user: User) => void;
     logout: () => void;
-    updateBalance: (newBalance: number) => void;
     refreshUser: () => Promise<void>;
     isLoading: boolean;
 }
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Check for stored auth on mount
+        // Hydrate from localStorage on mount
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
 
@@ -29,13 +29,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             try {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
+
+                // Immediately verify with server
+                verifySession(storedToken);
             } catch {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
+                logout();
             }
+        } else {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     }, []);
+
+    const verifySession = async (tokenStr: string) => {
+        try {
+            const res = await fetch('/api/user', {
+                headers: { Authorization: `Bearer ${tokenStr}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.user) {
+                    // Update fresh data from server
+                    setUser(data.user);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                }
+            } else {
+                logout(); // Token invalid
+            }
+        } catch (e) {
+            console.error('Session verify failed', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const login = (newToken: string, newUser: User) => {
         setToken(newToken);
@@ -49,14 +74,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-    };
-
-    const updateBalance = (newBalance: number) => {
-        if (user) {
-            const updatedUser = { ...user, balance: newBalance };
-            setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-        }
     };
 
     const refreshUser = async () => {
@@ -78,7 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, updateBalance, refreshUser, isLoading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, refreshUser, isLoading }}>
             {children}
         </AuthContext.Provider>
     );
@@ -86,8 +103,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
+    if (!context) throw new Error('useAuth must be used within an AuthProvider');
     return context;
 };

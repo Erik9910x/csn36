@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -41,21 +42,21 @@ const promos = [
 ];
 
 export default function PromotionsPage() {
-    const { user, token, refreshUser } = useAuth();
+    const { user, token, refreshUser, isLoading: authLoading } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
 
     const [promoCode, setPromoCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [usedCodes, setUsedCodes] = useState<string[]>([]);
+
+    // Derived state from user data - no local state needed for used codes
+    const usedCodes = user?.usedCodes || [];
 
     useEffect(() => {
-        if (!user) {
+        if (!authLoading && !user) {
             router.push('/login');
-        } else if (user.usedCodes) {
-            setUsedCodes(user.usedCodes);
         }
-    }, [user, router]);
+    }, [user, authLoading, router]);
 
     const redeemCode = async (code: string) => {
         if (!token) return;
@@ -80,7 +81,7 @@ export default function PromotionsPage() {
 
             const data = await res.json();
             if (res.ok) {
-                await refreshUser();
+                await refreshUser(); // This will auto-update user.balance and user.usedCodes
                 showToast('success', `Nhận thành công +${formatCurrency(data.amount)}!`);
                 setPromoCode('');
             } else {
@@ -139,9 +140,9 @@ export default function PromotionsPage() {
                             >
                                 <div className="card-compact flex items-center gap-3">
                                     <div className="text-3xl">{promo.icon}</div>
-                                    <div className="flex-1">
+                                    <div className="text-sm flex-1">
                                         <div className="font-bold">{promo.title}</div>
-                                        <div className="text-sm text-muted">{promo.desc}</div>
+                                        <div className="text-muted">{promo.desc}</div>
                                         <div className="text-xs text-secondary mt-1">Mã: {promo.code}</div>
                                     </div>
                                     {isUsed ? (
@@ -159,20 +160,6 @@ export default function PromotionsPage() {
                             </div>
                         );
                     })}
-                </div>
-
-                {/* Info */}
-                <div className="card mt-4" style={{ borderColor: 'var(--accent-blue)' }}>
-                    <div className="card-compact">
-                        <div className="flex items-start gap-2">
-                            <span className="text-xl">ℹ️</span>
-                            <div className="text-sm text-muted">
-                                <p className="mb-1">• Mỗi mã chỉ được sử dụng 1 lần</p>
-                                <p className="mb-1">• Đây là game demo, tiền không có giá trị thật</p>
-                                <p>• Liên hệ admin để nhận thêm mã!</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

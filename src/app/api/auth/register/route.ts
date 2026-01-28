@@ -1,57 +1,34 @@
+
 import { NextRequest, NextResponse } from 'next/server';
-import { createUser, getUserByUsername } from '@/lib/db';
-import { hashPassword, generateToken } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { createUser, getUserByUsername } from '@/lib/db';
+import { hashPassword } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
     try {
-        const { username, password } = await request.json();
+        const { username, password } = await req.json();
 
-        // Validation
-        if (!username || !password) {
-            return NextResponse.json(
-                { error: 'Username and password are required' },
-                { status: 400 }
-            );
+        if (!username || username.length < 3) {
+            return NextResponse.json({ error: 'Username too short' }, { status: 400 });
+        }
+        if (!password || password.length < 6) {
+            return NextResponse.json({ error: 'Password too short' }, { status: 400 });
         }
 
-        if (username.length < 3 || username.length > 20) {
-            return NextResponse.json(
-                { error: 'Username must be 3-20 characters' },
-                { status: 400 }
-            );
+        const existing = getUserByUsername(username);
+        if (existing) {
+            return NextResponse.json({ error: 'Username taken' }, { status: 409 });
         }
 
-        if (password.length < 6) {
-            return NextResponse.json(
-                { error: 'Password must be at least 6 characters' },
-                { status: 400 }
-            );
-        }
-
-        // Check if username exists
-        const existingUser = getUserByUsername(username);
-        if (existingUser) {
-            return NextResponse.json(
-                { error: 'Username already exists' },
-                { status: 409 }
-            );
-        }
-
-        // Create user
         const userId = uuidv4();
-        const passwordHash = await hashPassword(password);
-        createUser(userId, username, passwordHash);
+        const hashed = await hashPassword(password);
 
-        return NextResponse.json(
-            { message: 'Registration successful', userId },
-            { status: 201 }
-        );
-    } catch (error) {
-        console.error('Register error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        // This will create user with 10M default from our new DB logic
+        createUser(userId, username, hashed);
+
+        return NextResponse.json({ message: 'Success', userId }, { status: 201 });
+    } catch (e) {
+        console.error('Register API Error:', e);
+        return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
     }
 }
