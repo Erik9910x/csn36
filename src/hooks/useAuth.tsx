@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthResponse } from '@/types';
+import { User } from '@/types';
 
 interface AuthContextType {
     user: User | null;
@@ -21,7 +21,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Hydrate from localStorage on mount
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
 
@@ -29,8 +28,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             try {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
-
-                // Immediately verify with server
                 verifySession(storedToken);
             } catch {
                 logout();
@@ -48,15 +45,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (res.ok) {
                 const data = await res.json();
                 if (data.user) {
-                    // Update fresh data from server
                     setUser(data.user);
                     localStorage.setItem('user', JSON.stringify(data.user));
                 }
             } else {
-                logout(); // Token invalid
+                logout();
             }
-        } catch (e) {
-            console.error('Session verify failed', e);
+        } catch {
+            // Network error, keep local session valid
         } finally {
             setIsLoading(false);
         }
@@ -90,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
         } catch (error) {
-            console.error('Failed to refresh user', error);
+            console.error(error);
         }
     };
 

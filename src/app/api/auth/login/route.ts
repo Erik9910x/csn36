@@ -6,8 +6,8 @@ import { comparePassword, generateToken } from '@/lib/auth';
 export async function POST(req: NextRequest) {
     try {
         const { username, password } = await req.json();
-
         const user = getUserByUsername(username);
+
         if (!user || !(await comparePassword(password, user.password_hash))) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
@@ -25,8 +25,7 @@ export async function POST(req: NextRequest) {
                 usedCodes
             }
         });
-    } catch (e) {
-        console.error('Login API Error:', e);
-        return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: 'System Error' }, { status: 500 });
     }
 }

@@ -8,14 +8,10 @@ export async function GET(req: NextRequest) {
         const token = getTokenFromHeader(req.headers.get('Authorization'));
         const payload = token ? verifyToken(token) : null;
 
-        if (!payload) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const user = getUserById(payload.userId);
-        if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
         return NextResponse.json({
             user: {
@@ -26,8 +22,7 @@ export async function GET(req: NextRequest) {
                 usedCodes: getUsedCodes(user.id)
             }
         });
-    } catch (e) {
-        console.error('User API Error:', e);
-        return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: 'System Error' }, { status: 500 });
     }
 }

@@ -1,60 +1,36 @@
+
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { formatShortCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
+import Link from 'next/link';
 
-const navItems = [
-    { path: '/', icon: '🏠', label: 'Trang chủ' },
-    { path: '/promotions', icon: '🎁', label: 'Khuyến mãi' },
-    { path: '/me', icon: '👤', label: 'Tài khoản' },
-];
-
-export function Taskbar() {
-    const pathname = usePathname();
-    const { user } = useAuth();
-
-    const hideOnPages = ['/login', '/register', '/introduction'];
-    if (hideOnPages.includes(pathname)) return null;
+export const Taskbar = () => {
+    const { user, logout } = useAuth();
 
     return (
-        <>
-            {/* Top Balance Bar - Only on game pages */}
-            {pathname.startsWith('/games/') && user && (
-                <div className="page-header">
-                    <Link href="/" className="flex items-center gap-2 text-secondary">
-                        <span>←</span>
-                        <span className="text-sm">Quay lại</span>
-                    </Link>
-                    <div className="flex items-center gap-3">
-                        <span className="text-sm text-secondary">Số dư:</span>
-                        <span className="text-balance">{formatShortCurrency(user.balance)}</span>
+        <nav className="fixed top-0 left-0 right-0 h-16 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 z-40 flex items-center justify-between px-4 lg:px-8">
+            <Link href="/" className="text-xl font-bold text-emerald-400">CASINO36</Link>
+
+            <div className="flex items-center gap-4">
+                {user ? (
+                    <>
+                        <div className="hidden md:flex flex-col items-end">
+                            <span className="text-xs text-gray-400">Balance</span>
+                            <span className="font-mono font-bold text-emerald-400">{formatCurrency(user.balance)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Link href="/promotions" className="btn btn-primary text-sm">🎁 Promos</Link>
+                            <button onClick={logout} className="text-gray-400 hover:text-white px-3 py-1">Logout</button>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex gap-2">
+                        <Link href="/login" className="text-gray-300 hover:text-white px-3 py-2">Login</Link>
+                        <Link href="/register" className="btn btn-primary text-sm">Register</Link>
                     </div>
-                </div>
-            )}
-
-            {/* Bottom Navigation */}
-            <nav className="bottom-nav">
-                <div className="bottom-nav-inner">
-                    {navItems.map((item) => {
-                        const isActive = item.path === '/'
-                            ? pathname === '/'
-                            : pathname.startsWith(item.path);
-
-                        return (
-                            <Link
-                                key={item.path}
-                                href={item.path}
-                                className={`nav-item ${isActive ? 'active' : ''}`}
-                            >
-                                <span className="nav-icon">{item.icon}</span>
-                                <span className="nav-label">{item.label}</span>
-                            </Link>
-                        );
-                    })}
-                </div>
-            </nav>
-        </>
+                )}
+            </div>
+        </nav>
     );
-}
+};

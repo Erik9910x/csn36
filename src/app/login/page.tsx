@@ -1,98 +1,80 @@
+
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/Toast';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginPage() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const { login } = useAuth();
-    const { showToast } = useToast();
     const router = useRouter();
+    const [formData, setFormData] = useState({ username: '', password: '' });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!username || !password) {
-            showToast('error', 'Vui lòng nhập đủ thông tin');
-            return;
-        }
+        setError('');
+        setLoading(true);
 
-        setIsLoading(true);
         try {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify(formData)
             });
-
             const data = await res.json();
+
             if (res.ok) {
-                login(data.user, data.token);
-                showToast('success', 'Đăng nhập thành công!');
+                login(data.token, data.user);
                 router.push('/');
             } else {
-                showToast('error', data.error || 'Đăng nhập thất bại');
+                setError(data.error || 'Login failed');
             }
         } catch {
-            showToast('error', 'Lỗi kết nối');
+            setError('Network error');
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     };
 
     return (
-        <div className="page flex flex-col items-center justify-center p-6" style={{ minHeight: '100vh' }}>
-            <div className="text-center mb-6">
-                <div className="text-5xl mb-3">🎰</div>
-                <h1 className="text-2xl font-bold">Đăng nhập</h1>
-                <p className="text-muted text-sm">Chào mừng trở lại!</p>
-            </div>
+        <div className="flex justify-center items-center min-h-[80vh]">
+            <div className="card w-full max-w-md">
+                <h1 className="text-2xl font-bold mb-6 text-center text-emerald-400">Welcome Back</h1>
 
-            <form onSubmit={handleSubmit} className="w-full" style={{ maxWidth: 360 }}>
-                <div className="card mb-4">
-                    <div className="card-body flex flex-col gap-4">
-                        <div className="input-group">
-                            <label className="input-label">Tên đăng nhập</label>
-                            <input
-                                type="text"
-                                className="input"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                placeholder="Nhập username"
-                            />
-                        </div>
-                        <div className="input-group">
-                            <label className="input-label">Mật khẩu</label>
-                            <input
-                                type="password"
-                                className="input"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Nhập mật khẩu"
-                            />
-                        </div>
+                {error && <div className="bg-red-500/20 text-red-400 p-3 rounded mb-4 text-sm text-center">{error}</div>}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">Username</label>
+                        <input
+                            className="input"
+                            value={formData.username}
+                            onChange={e => setFormData({ ...formData, username: e.target.value })}
+                            required
+                        />
                     </div>
-                </div>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">Password</label>
+                        <input
+                            type="password"
+                            className="input"
+                            value={formData.password}
+                            onChange={e => setFormData({ ...formData, password: e.target.value })}
+                            required
+                        />
+                    </div>
+                    <button type="submit" disabled={loading} className="btn btn-primary w-full mt-4">
+                        {loading ? 'Logging in...' : 'Login'}
+                    </button>
+                </form>
 
-                <button
-                    type="submit"
-                    className="btn btn-primary btn-lg btn-block"
-                    disabled={isLoading}
-                >
-                    {isLoading ? '⏳ Đang xử lý...' : '🔑 Đăng nhập'}
-                </button>
-
-                <div className="text-center mt-4">
-                    <span className="text-muted text-sm">Chưa có tài khoản? </span>
-                    <Link href="/register" className="text-success font-medium">
-                        Đăng ký ngay
-                    </Link>
-                </div>
-            </form>
+                <p className="text-center text-gray-500 text-sm mt-6">
+                    New here? <Link href="/register" className="text-emerald-400 hover:underline">Create Account</Link>
+                </p>
+            </div>
         </div>
     );
 }

@@ -8,159 +8,102 @@ import { formatCurrency } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 const promos = [
-    {
-        icon: '🎁',
-        title: 'Tân Thủ',
-        desc: 'Nhận 10,000,000đ cho thành viên mới',
-        code: 'CHAOMUNGTANTHU',
-        highlight: true,
-    },
-    {
-        icon: '⭐',
-        title: 'VIP Casino',
-        desc: 'Bonus 36,000,000đ dành cho VIP',
-        code: 'VIP36CASINO',
-    },
-    {
-        icon: '🎉',
-        title: 'Happy New Year',
-        desc: 'Nhận 260,000,000đ mừng năm mới',
-        code: 'HAPPYNEWYEAR2026',
-    },
-    {
-        icon: '❤️',
-        title: 'Thanh Hóa',
-        desc: 'Bonus 36,360,000đ cho fan Thanh Hóa',
-        code: 'TOIYEUTHANHHOA',
-    },
-    {
-        icon: '🎮',
-        title: 'Game Vui',
-        desc: 'Nhận 10,000,000đ chơi game',
-        code: 'GAMEVUIGIAITRI',
-    },
+    { title: 'Tân Thủ', desc: 'Nhận 10M cho thành viên mới', code: 'CHAOMUNGTANTHU', icon: '🎁', highlight: true },
+    { title: 'VIP Casino', desc: 'Bonus 36M cho VIP', code: 'VIP36CASINO', icon: '⭐' },
+    { title: 'Happy NY', desc: 'Bonus 260M', code: 'HAPPYNEWYEAR2026', icon: '🎉' },
+    { title: 'Thanh Hóa', desc: 'Fan Thanh Hóa', code: 'TOIYEUTHANHHOA', icon: '⚽' },
+    { title: 'Game Vui', desc: 'Nhận 10M', code: 'GAMEVUIGIAITRI', icon: '🎮' },
 ];
 
 export default function PromotionsPage() {
-    const { user, token, refreshUser, isLoading: authLoading } = useAuth();
+    const { user, token, refreshUser, isLoading } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
-
-    const [promoCode, setPromoCode] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Derived state from user data - no local state needed for used codes
-    const usedCodes = user?.usedCodes || [];
+    const [loadingCode, setLoadingCode] = useState('');
+    const [promoInput, setPromoInput] = useState('');
 
     useEffect(() => {
-        if (!authLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, authLoading, router]);
+        if (!isLoading && !user) router.push('/login');
+    }, [user, isLoading, router]);
 
-    const redeemCode = async (code: string) => {
-        if (!token) return;
+    const redeem = async (code: string) => {
+        if (!token || loadingCode) return;
+        setLoadingCode(code);
 
-        const upperCode = code.toUpperCase().trim();
-
-        if (usedCodes.includes(upperCode)) {
-            showToast('error', 'Mã này đã được sử dụng!');
-            return;
-        }
-
-        setIsLoading(true);
         try {
             const res = await fetch('/api/promo/redeem', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ code: upperCode }),
+                body: JSON.stringify({ code })
             });
-
             const data = await res.json();
+
             if (res.ok) {
-                await refreshUser(); // This will auto-update user.balance and user.usedCodes
-                showToast('success', `Nhận thành công +${formatCurrency(data.amount)}!`);
-                setPromoCode('');
+                showToast('success', `Success! +${formatCurrency(data.amount)}`);
+                refreshUser();
+                if (code === promoInput) setPromoInput('');
             } else {
-                showToast('error', data.error || 'Lỗi nhập mã');
+                showToast('error', data.error || 'Failed');
             }
         } catch {
-            showToast('error', 'Lỗi kết nối');
+            showToast('error', 'Network error');
         } finally {
-            setIsLoading(false);
+            setLoadingCode('');
         }
     };
 
     if (!user) return null;
 
     return (
-        <div className="page">
-            <div className="page-content">
-                {/* Header */}
-                <div className="text-center mb-4">
-                    <div className="text-4xl mb-2">🎁</div>
-                    <h1 className="text-2xl font-bold">Khuyến mãi</h1>
-                    <p className="text-muted text-sm">Nhập mã để nhận ưu đãi</p>
-                </div>
+        <div className="max-w-2xl mx-auto">
+            <h1 className="text-3xl font-bold mb-6 text-center">Promotions</h1>
 
-                {/* Input Code */}
-                <div className="card mb-4">
-                    <div className="card-body">
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                className="input flex-1"
-                                placeholder="Nhập mã khuyến mãi..."
-                                value={promoCode}
-                                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                            />
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => redeemCode(promoCode)}
-                                disabled={isLoading || !promoCode.trim()}
-                            >
-                                {isLoading ? '⏳' : 'Nhập'}
-                            </button>
-                        </div>
-                    </div>
+            <div className="card mb-8">
+                <div className="flex gap-2">
+                    <input
+                        className="input"
+                        placeholder="Enter Promo Code"
+                        value={promoInput}
+                        onChange={e => setPromoInput(e.target.value.toUpperCase())}
+                    />
+                    <button
+                        className="btn btn-primary"
+                        disabled={!promoInput || !!loadingCode}
+                        onClick={() => redeem(promoInput)}
+                    >
+                        Redeem
+                    </button>
                 </div>
+            </div>
 
-                {/* Promo List */}
-                <div className="flex flex-col gap-3">
-                    {promos.map((promo) => {
-                        const isUsed = usedCodes.includes(promo.code);
-                        return (
-                            <div
-                                key={promo.code}
-                                className="card"
-                                style={promo.highlight ? { border: '1px solid var(--accent-gold)', background: 'rgba(255, 215, 0, 0.05)' } : undefined}
-                            >
-                                <div className="card-compact flex items-center gap-3">
-                                    <div className="text-3xl">{promo.icon}</div>
-                                    <div className="text-sm flex-1">
-                                        <div className="font-bold">{promo.title}</div>
-                                        <div className="text-muted">{promo.desc}</div>
-                                        <div className="text-xs text-secondary mt-1">Mã: {promo.code}</div>
-                                    </div>
-                                    {isUsed ? (
-                                        <span className="badge badge-success">Đã dùng</span>
-                                    ) : (
-                                        <button
-                                            className="btn btn-primary btn-sm"
-                                            onClick={() => redeemCode(promo.code)}
-                                            disabled={isLoading}
-                                        >
-                                            Nhận
-                                        </button>
-                                    )}
-                                </div>
+            <div className="grid gap-4">
+                {promos.map(p => {
+                    const isUsed = user.usedCodes?.includes(p.code);
+                    return (
+                        <div key={p.code} className={`card flex items-center gap-4 ${p.highlight ? 'border-yellow-500/50 bg-yellow-500/5' : ''}`}>
+                            <div className="text-3xl">{p.icon}</div>
+                            <div className="flex-1">
+                                <h3 className="font-bold text-lg">{p.title}</h3>
+                                <p className="text-gray-400 text-sm">{p.desc}</p>
+                                <code className="text-xs bg-gray-900 px-2 py-1 rounded mt-1 inline-block text-emerald-400">{p.code}</code>
                             </div>
-                        );
-                    })}
-                </div>
+                            {isUsed ? (
+                                <span className="text-gray-500 text-sm font-semibold px-4">Claimed</span>
+                            ) : (
+                                <button
+                                    className="btn btn-primary text-sm"
+                                    onClick={() => redeem(p.code)}
+                                    disabled={!!loadingCode}
+                                >
+                                    {loadingCode === p.code ? '...' : 'Claim'}
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

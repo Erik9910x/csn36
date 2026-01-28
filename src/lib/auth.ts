@@ -1,9 +1,8 @@
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User } from '@/types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'v3-secret-key-replace-me';
+const JWT_SECRET = 'v4-nuclear-launch-codes';
 
 interface JwtPayload {
     userId: string;
@@ -19,18 +18,13 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 };
 
 export const generateToken = (user: { id: string, username: string }): string => {
-    return jwt.sign(
-        { userId: user.id, username: user.username },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-    );
+    return jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
 };
 
 export const verifyToken = (token: string): JwtPayload | null => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        return decoded as JwtPayload;
-    } catch (e) {
+        return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    } catch {
         return null;
     }
 };
