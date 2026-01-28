@@ -100,6 +100,35 @@ export const getTodayStats = (userId: string) => {
 };
 
 // Promo operations
+export const processRedemption = (redemptionId: string, userId: string, code: string, amount: number) => {
+  const process = db.transaction(() => {
+    // 1. Check strict existence
+    const check = db.prepare('SELECT 1 FROM promo_redemptions WHERE user_id = ? AND code = ?').get(userId, code);
+    if (check) throw new Error('ALREADY_USED');
+
+    // 2. Get User
+    const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId) as { balance: number };
+    if (!user) throw new Error('USER_NOT_FOUND');
+
+    // 3. Update Balance
+    const newBalance = (user.balance || 0) + amount;
+    db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(newBalance, userId);
+
+    // 4. Insert Record
+    db.prepare('INSERT INTO promo_redemptions (id, user_id, code, amount) VALUES (?, ?, ?, ?)').run(redemptionId, userId, code, amount);
+
+    return newBalance;
+  });
+
+  try {
+    console.log(`[DB] Processing redemption: ${code} for ${userId}`);
+    return process();
+  } catch (error) {
+    console.error('[DB] Redemption transaction failed:', error);
+    throw error;
+  }
+};
+
 export const hasRedeemedCode = (userId: string, code: string) => {
   const stmt = db.prepare('SELECT * FROM promo_redemptions WHERE user_id = ? AND code = ?');
   return stmt.get(userId, code) !== undefined;

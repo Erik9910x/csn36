@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserById, updateBalance, hasRedeemedCode, redeemCode } from '@/lib/db';
+import { getUserById, processRedemption } from '@/lib/db';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth';
 import { PROMO_CODES, generateId } from '@/lib/utils';
 
@@ -42,33 +42,24 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check if already redeemed
-        if (hasRedeemedCode(payload.userId, upperCode)) {
-            return NextResponse.json(
-                { error: 'Bạn đã sử dụng mã này rồi' },
-                { status: 400 }
-            );
+        try {
+            const newBalance = processRedemption(generateId(), payload.userId, upperCode, amount);
+
+            return NextResponse.json({
+                message: 'Nhận thưởng thành công!',
+                amount,
+                newBalance,
+            });
+        } catch (err: any) {
+            console.error('Redeem transaction error:', err);
+            if (err.message === 'ALREADY_USED') {
+                return NextResponse.json({ error: 'Bạn đã sử dụng mã này rồi' }, { status: 400 });
+            }
+            if (err.message === 'USER_NOT_FOUND') {
+                return NextResponse.json({ error: 'Người dùng không tồn tại' }, { status: 404 });
+            }
+            throw err;
         }
-
-        // Get user and update balance
-        const user = getUserById(payload.userId);
-        if (!user) {
-            return NextResponse.json(
-                { error: 'Người dùng không tồn tại' },
-                { status: 404 }
-            );
-        }
-
-        const currentBalance = user.balance || 0;
-        const newBalance = currentBalance + amount;
-        updateBalance(payload.userId, newBalance);
-        redeemCode(generateId(), payload.userId, upperCode, amount);
-
-        return NextResponse.json({
-            message: 'Nhận thưởng thành công!',
-            amount,
-            newBalance,
-        });
     } catch (error) {
         console.error('Promo redeem error:', error);
         return NextResponse.json(
