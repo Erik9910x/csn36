@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const newBalance = user.balance + amount;
+        const currentBalance = user.balance || 0;
+        const newBalance = currentBalance + amount;
         updateBalance(payload.userId, newBalance);
         redeemCode(generateId(), payload.userId, upperCode, amount);
 
