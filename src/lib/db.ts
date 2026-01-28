@@ -8,7 +8,7 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const db = new Database(path.join(dataDir, 'casino36.db'));
+const db = new Database(path.join(dataDir, 'v2_casino36.db'));
 
 // Initialize tables
 db.exec(`
